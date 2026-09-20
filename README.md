@@ -172,3 +172,22 @@ Issued markers and approved/published revisions must not be hard-deleted through
 The file was reviewed against the official DBML syntax and checked locally for structural relationship consistency. Installation of the official parser was declined, so successful import in dbdiagram.io or parsing with `@dbml/core` remains to be confirmed. No database has been created or migrated.
 
 When implementation begins, test rejected cross-organization asset links, incorrect publication pointers, duplicate languages/tokens, collection deletion with stops, and source-revision links to other stops. Also test that editing a draft leaves the live revision unchanged and moving a stop preserves its canonical URL and markers.
+
+## Login and content dashboard
+
+- `/` redirects to `/dashboard/`; signed-out users are sent to `/login/`.
+- Sign in using the email and password of an existing active user. Email matching is case-insensitive. Create a development administrator with `make superuser` after applying migrations (`make migrate`).
+- The default session expires when the browser session ends. “Remember me” sets a 14-day session. Sign-out uses a CSRF-protected POST.
+- The overview includes an organization selector, current collection/stop/translation counts, and a searchable, paginated collection table. Active memberships determine access; `is_staff` does not grant organization access. Superusers can access all active, unarchived organizations.
+- Accounts with no active memberships see an empty workspace. Collection and stop editors, invitations, password recovery, and publishing actions are not part of this initial template implementation.
+
+The templates adapt the layout conventions of the [Flowbite admin dashboard](https://github.com/themesberg/flowbite-admin-dashboard) using current [Flowbite Django integration](https://flowbite.com/docs/getting-started/django/) and Tailwind CSS. Assets are served locally; there is no runtime CDN or browser Tailwind compiler.
+
+```sh
+npm ci
+npm run build       # compile CSS and copy Flowbite JS + license
+npm run watch       # rebuild CSS while editing templates
+make test ARGS="apps.accounts apps.core"
+```
+
+Commit rebuilt `static/css/app.css` and `static/js/flowbite.min.js` with template changes so the Python development image needs no Node runtime. Use `collectstatic` and a static file server for production. The built-in Django development server serves assets when `DJANGO_DEBUG=true`.
