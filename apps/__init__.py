@@ -1,0 +1,1 @@
+"""TapTour domain applications."""

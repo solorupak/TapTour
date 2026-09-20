@@ -1,0 +1,407 @@
+// Paste this entire file into the DBML editor at https://dbdiagram.io/d
+// Proposed v1 schema. Read README.md for workflow rules and Django mapping.
+// DBML shows database constraints; notes identify application-enforced rules.
+
+Project visitor_information_platform {
+  database_type: 'PostgreSQL'
+  Note: '''
+    Organization = customer account and access boundary.
+    Collection = organization-owned administrative grouping of stops.
+    Stop = independently consumable information about one subject.
+    Each stop belongs to exactly one collection. No required visiting order.
+    Languages initially: en (English), ne (Nepali).
+    Ordinary bigint primary keys support Django. Composite foreign keys
+    add organization and revision consistency through explicit SQL migrations.
+    Django framework tables, billing, routes, and visitor analytics are omitted.
+  '''
+}
+
+Table users [headercolor: #526D82] {
+  id bigint [pk, increment]
+  email varchar(254) [not null]
+  password varchar(128) [not null, note: 'Django encoded password only; never plaintext.']
+  display_name varchar(150) [not null]
+  is_active boolean [not null, default: true]
+  is_staff boolean [not null, default: false, note: 'Django admin eligibility; does not grant access to every organization.']
+  is_superuser boolean [not null, default: false]
+  last_login timestamptz
+  date_joined timestamptz [not null, default: `now()`]
+
+  indexes {
+    (`lower(email)`) [unique, name: 'users_email_ci_uq']
+  }
+
+  Note: 'Proposed custom Django user with email login. Framework groups and permissions tables are not shown. Visitors have no user record.'
+}
+
+Table languages [headercolor: #526D82] {
+  code varchar(35) [pk, note: 'BCP 47 code, initially en and ne.']
+  english_name varchar(80) [not null]
+  native_name varchar(80) [not null]
+  text_direction varchar(3) [not null, default: 'ltr']
+
+  checks {
+    `text_direction IN ('ltr', 'rtl')` [name: 'language_direction_ck']
+  }
+}
+
+Table organizations [headercolor: #526D82] {
+  id bigint [pk, increment]
+  name varchar(200) [not null]
+  slug varchar(120) [not null, unique, note: 'Administrative/public branding slug; marker URLs never depend on it.']
+  default_language_code varchar(35) [not null]
+  is_active boolean [not null, default: true, note: 'An inactive organization serves no public content.']
+  archived_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Customer institution, managing body, or company. One account may manage multiple collections and locations. Archiving also blocks public content.'
+}
+
+Table organization_memberships [headercolor: #526D82] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  user_id bigint [not null]
+  role varchar(20) [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (organization_id, user_id) [unique]
+    user_id
+  }
+
+  checks {
+    `role IN ('admin', 'publisher', 'editor', 'reviewer', 'viewer')` [name: 'membership_role_ck']
+  }
+
+  Note: 'Our service team receives memberships in assigned customer organizations. Role permissions are defined in README.md. Membership removal disables access, not historical authorship.'
+}
+
+Table collections [headercolor: #52796F] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  internal_name varchar(200) [not null]
+  public_id uuid [not null, unique, note: 'Generated with uuid4 by Django; stable public collection URL.']
+  is_public boolean [not null, default: false, note: 'Controls collection browsing only. Does not publish or unpublish individual stops.']
+  archived_at timestamptz [note: 'Archiving blocks the collection and all its stops from public delivery.']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id, organization_id) [unique]
+    (organization_id, archived_at)
+  }
+
+  Note: 'Flat group such as an exhibition, gallery, heritage area, or event. Not a sequential tour. Deletion is blocked while stops or translations refer to it.'
+}
+
+Table collection_translations [headercolor: #52796F] {
+  id bigint [pk, increment]
+  collection_id bigint [not null]
+  language_code varchar(35) [not null]
+  title varchar(250) [not null]
+  introduction text [not null, default: '']
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (collection_id, language_code) [unique]
+  }
+
+  Note: 'Localized collection browsing labels. Proposed v1 exception: directly edited metadata, without stop-style revisioning. Ownership derives from collection.'
+}
+
+Table stops [headercolor: #52796F] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  collection_id bigint [not null]
+  public_id uuid [not null, unique, note: 'Generated by Django; canonical URL does not contain a collection ID.']
+  internal_name varchar(200) [not null]
+  source_language_code varchar(35) [not null, note: 'Editorial source language. Validate that its translation exists before first publication.']
+  archived_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id, organization_id) [unique]
+    (organization_id, collection_id)
+  }
+
+  Note: 'Exactly one owning collection. Composite FK prevents collection/organization mismatch. Organization identity is immutable after creation. Moving collection within the organization preserves all links.'
+}
+
+Table stop_translations [headercolor: #B08D57] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  stop_id bigint [not null]
+  language_code varchar(35) [not null]
+  working_revision_id bigint [note: 'Latest saved editorial version. May equal the published version.']
+  published_revision_id bigint [note: 'NULL means this language is unpublished.']
+  published_at timestamptz
+  published_by_id bigint
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (stop_id, language_code) [unique]
+    (id, stop_id, organization_id) [unique]
+    working_revision_id
+    published_revision_id
+  }
+
+  checks {
+    `(published_revision_id IS NULL AND published_at IS NULL AND published_by_id IS NULL) OR (published_revision_id IS NOT NULL AND published_at IS NOT NULL AND published_by_id IS NOT NULL)` [name: 'translation_publication_ck']
+  }
+
+  Note: 'Composite pointers ensure that working and published revisions belong to this exact translation, stop, and organization. Create with NULL pointers, insert revision, then set working pointer in one transaction.'
+}
+
+Table content_revisions [headercolor: #B08D57] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  stop_id bigint [not null]
+  stop_translation_id bigint [not null]
+  revision_number integer [not null]
+  title varchar(250) [not null]
+  introduction text [not null, default: '']
+  body_html text [not null, default: '', note: 'Sanitized text markup only; media use explicit asset relations, not embedded arbitrary URLs.']
+  hero_image_asset_id bigint
+  hero_image_alt text [not null, default: '']
+  hero_image_caption text [not null, default: '']
+  audio_asset_id bigint
+  audio_transcript text [not null, default: '']
+  source_notes text [not null, default: '', note: 'Private editorial sources; never include in visitor responses.']
+  based_on_source_revision_id bigint [note: 'For translations: exact source-language revision translated. NULL for original source content.']
+  created_by_id bigint [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (stop_translation_id, revision_number) [unique]
+    (id, stop_translation_id, stop_id, organization_id) [unique]
+    (id, stop_id, organization_id) [unique]
+    (id, organization_id) [unique]
+    hero_image_asset_id
+    audio_asset_id
+    based_on_source_revision_id
+  }
+
+  checks {
+    `revision_number > 0` [name: 'revision_number_ck']
+    `based_on_source_revision_id IS NULL OR based_on_source_revision_id <> id` [name: 'revision_source_not_self_ck']
+  }
+
+  Note: 'Immutable saved snapshot, including its revision_images. Each save creates a new revision. Source revision must be in the source language of the same stop; FK enforces same stop, service validates source language. Publication validates required fields and asset readiness/types.'
+}
+
+Table media_assets [headercolor: #806A8A] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  type varchar(10) [not null]
+  status varchar(12) [not null, default: 'pending']
+  storage_key varchar(500) [not null, unique, note: 'Private storage location, not a permanent public URL.']
+  original_filename varchar(255) [not null]
+  mime_type varchar(100) [not null]
+  byte_size bigint [not null]
+  width_px integer
+  height_px integer
+  duration_seconds decimal(12,3)
+  credit_text text [not null, default: '']
+  rights_notes text [not null, default: '', note: 'Private licensing/permission record.']
+  uploaded_by_id bigint [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id, organization_id) [unique]
+    (organization_id, type, created_at)
+  }
+
+  checks {
+    `type IN ('image', 'audio')` [name: 'asset_type_ck']
+    `status IN ('pending', 'ready', 'failed')` [name: 'asset_status_ck']
+    `byte_size >= 0` [name: 'asset_size_ck']
+    `width_px IS NULL OR width_px > 0` [name: 'asset_width_ck']
+    `height_px IS NULL OR height_px > 0` [name: 'asset_height_ck']
+    `duration_seconds IS NULL OR duration_seconds > 0` [name: 'asset_duration_ck']
+  }
+
+  Note: 'One immutable file per ready asset; replacement creates a new asset. Shared within an organization. Captions and alt text live on revisions. Public access is derived from currently published content, never a blanket public bucket.'
+}
+
+Table revision_images [headercolor: #806A8A] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  content_revision_id bigint [not null]
+  media_asset_id bigint [not null]
+  position integer [not null]
+  alt_text text [not null, default: '']
+  caption text [not null, default: '']
+
+  indexes {
+    (content_revision_id, position) [unique]
+    media_asset_id
+  }
+
+  checks {
+    `position >= 0` [name: 'revision_image_position_ck']
+  }
+
+  Note: 'Ordered supporting image gallery below the body, separate from hero image. Created atomically with the revision and immutable afterward. Validate that asset type is image.'
+}
+
+Table approval_records [headercolor: #B08D57] {
+  id bigint [pk, increment]
+  content_revision_id bigint [not null]
+  decision varchar(20) [not null]
+  reviewer_name varchar(200) [not null, note: 'Snapshot of the actual approver name, including external customer reviewers.']
+  reviewer_user_id bigint [note: 'Optional when approval comes from someone without a platform account.']
+  recorded_by_id bigint [not null]
+  evidence_reference text [not null, default: '', note: 'Private approval reference, such as an email record identifier.']
+  comment text [not null, default: '']
+  decided_at timestamptz [not null]
+  recorded_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (content_revision_id, recorded_at, id)
+  }
+
+  checks {
+    `decision IN ('approved', 'changes_requested', 'revoked')` [name: 'approval_decision_ck']
+  }
+
+  Note: 'Append-only decisions about one immutable revision. Ownership derives from revision. Latest recorded decision determines approval at publication time; edits create a new unapproved revision. Only authorized staff record decisions.'
+}
+
+Table markers [headercolor: #A56A58] {
+  id bigint [pk, increment]
+  stop_id bigint [not null]
+  token varchar(32) [not null, unique, note: 'Random URL-safe token for /r/<token>; public, permanent, and never reused.']
+  label varchar(150) [not null]
+  placement_notes text [not null, default: '']
+  has_qr boolean [not null, default: true]
+  has_nfc boolean [not null, default: false]
+  issued_at timestamptz [note: 'Set when printable/programming output is first released.']
+  installed_at timestamptz
+  retired_at timestamptz
+  retirement_reason text [not null, default: '']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    stop_id
+  }
+
+  checks {
+    `has_qr OR has_nfc` [name: 'marker_medium_ck']
+    `installed_at IS NULL OR issued_at IS NOT NULL` [name: 'marker_install_issued_ck']
+  }
+
+  Note: 'One physical sign or placement; its QR and NFC share the token. Organization derives from stop. Token and stop assignment are immutable after issuance. Retirement serves an explanation. Do not delete issued markers.'
+}
+
+Table marker_checks [headercolor: #A56A58] {
+  id bigint [pk, increment]
+  marker_id bigint [not null]
+  checked_by_id bigint [not null]
+  checked_at timestamptz [not null, default: `now()`]
+  qr_result varchar(12) [not null, default: 'not_tested']
+  nfc_result varchar(12) [not null, default: 'not_tested']
+  notes text [not null, default: '']
+
+  indexes {
+    (marker_id, checked_at)
+  }
+
+  checks {
+    `qr_result IN ('passed', 'failed', 'not_tested', 'not_present')` [name: 'marker_qr_result_ck']
+    `nfc_result IN ('passed', 'failed', 'not_tested', 'not_present')` [name: 'marker_nfc_result_ck']
+  }
+
+  Note: 'Append-only physical verification history. Record device/site details in notes. Organization derives from marker. Installed does not automatically mean verified.'
+}
+
+Table audit_events [headercolor: #777777] {
+  id bigint [pk, increment]
+  organization_id bigint [not null]
+  actor_user_id bigint [note: 'NULL for a system action.']
+  action varchar(80) [not null, note: 'Examples: stop.moved, translation.published, translation.unpublished, marker.retired.']
+  entity_type varchar(60) [not null]
+  entity_id bigint [not null]
+  details jsonb [not null, default: `'{}'::jsonb`, note: 'Small allowlisted metadata; publication records old/new revision IDs. Never store credentials.']
+  occurred_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (organization_id, occurred_at)
+    (organization_id, entity_type, entity_id)
+  }
+
+  Note: 'Append-only history. Generic target intentionally has no FK so the event can survive removal of unused drafts. This is not a visitor analytics table. Validate target organization before writing.'
+}
+
+// Access and ownership
+Ref: organizations.default_language_code > languages.code [delete: restrict]
+Ref: organization_memberships.organization_id > organizations.id [delete: restrict]
+Ref: organization_memberships.user_id > users.id [delete: restrict]
+Ref: collections.organization_id > organizations.id [delete: restrict]
+Ref: collection_translations.collection_id > collections.id [delete: restrict]
+Ref: collection_translations.language_code > languages.code [delete: restrict]
+Ref: stops.(collection_id, organization_id) > collections.(id, organization_id) [delete: restrict]
+Ref: stops.source_language_code > languages.code [delete: restrict]
+Ref: stop_translations.(stop_id, organization_id) > stops.(id, organization_id) [delete: restrict]
+Ref: stop_translations.language_code > languages.code [delete: restrict]
+
+// Revisions and same-translation publication pointers
+Ref: content_revisions.(stop_translation_id, stop_id, organization_id) > stop_translations.(id, stop_id, organization_id) [delete: restrict]
+Ref: stop_translations.(working_revision_id, id, stop_id, organization_id) > content_revisions.(id, stop_translation_id, stop_id, organization_id) [delete: restrict]
+Ref: stop_translations.(published_revision_id, id, stop_id, organization_id) > content_revisions.(id, stop_translation_id, stop_id, organization_id) [delete: restrict]
+Ref: content_revisions.(based_on_source_revision_id, stop_id, organization_id) > content_revisions.(id, stop_id, organization_id) [delete: restrict]
+Ref: content_revisions.created_by_id > users.id [delete: restrict]
+Ref: stop_translations.published_by_id > users.id [delete: restrict]
+
+// Media must belong to the same organization as its content
+Ref: media_assets.organization_id > organizations.id [delete: restrict]
+Ref: media_assets.uploaded_by_id > users.id [delete: restrict]
+Ref: content_revisions.(hero_image_asset_id, organization_id) > media_assets.(id, organization_id) [delete: restrict]
+Ref: content_revisions.(audio_asset_id, organization_id) > media_assets.(id, organization_id) [delete: restrict]
+Ref: revision_images.(content_revision_id, organization_id) > content_revisions.(id, organization_id) [delete: restrict]
+Ref: revision_images.(media_asset_id, organization_id) > media_assets.(id, organization_id) [delete: restrict]
+
+// Review and physical operations
+Ref: approval_records.content_revision_id > content_revisions.id [delete: restrict]
+Ref: approval_records.reviewer_user_id > users.id [delete: restrict]
+Ref: approval_records.recorded_by_id > users.id [delete: restrict]
+Ref: markers.stop_id > stops.id [delete: restrict]
+Ref: marker_checks.marker_id > markers.id [delete: restrict]
+Ref: marker_checks.checked_by_id > users.id [delete: restrict]
+Ref: audit_events.organization_id > organizations.id [delete: restrict]
+Ref: audit_events.actor_user_id > users.id [delete: restrict]
+
+TableGroup access {
+  users
+  languages
+  organizations
+  organization_memberships
+}
+
+TableGroup visitor_content {
+  collections
+  collection_translations
+  stops
+}
+
+TableGroup publishing {
+  stop_translations
+  content_revisions
+  approval_records
+}
+
+TableGroup media {
+  media_assets
+  revision_images
+}
+
+TableGroup operations {
+  markers
+  marker_checks
+  audit_events
+}
