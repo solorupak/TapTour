@@ -3,10 +3,10 @@ COMPOSE := docker compose
 MANAGE := $(COMPOSE) exec web python manage.py
 ARGS ?=
 
-.PHONY: help setup build up down restart logs ps check makemigrations migrate shell superuser test dbshell manage
+.PHONY: help setup build start stop restart logs ps check makemigrations migrate shell superuser test dbshell manage
 
 help:
-	@echo "Docker: setup build up down restart logs ps"
+	@echo "Docker: setup build start stop restart logs ps"
 	@echo "Django: check makemigrations migrate shell superuser test dbshell"
 	@echo 'Extra arguments: make test ARGS="apps.content"'
 	@echo 'Any Django command: make manage ARGS="showmigrations"'

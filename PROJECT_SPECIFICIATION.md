@@ -26,9 +26,46 @@ Potential customers include museums, heritage sites, historic-city initiatives, 
 - Our team will initially handle most content work and offer the complete physical and digital service.
 - Main stack: Python, Django, PostgreSQL, HTML, Tailwind CSS, and HTMX.
 
+### Accepted link contract — TT-02, 23 September 2026
+
+New printed QR codes and NFC tags use marker-specific `/r/<token>` URLs.
+The canonical stop page is `/s/<public-id>/`, where `public-id` is the
+stop's UUID. QR and NFC on one placement share its marker URL; separate
+placements have separate markers. The owner confirmed that no URLs or tags
+have been issued, so no legacy-link migration is needed.
+
+`PUBLIC_BASE_URL` is the shared visitor origin for both paths: scheme and
+host, with an optional port and no path, query, fragment, or credentials.
+A trailing slash is tolerated by URL helpers. Production issuance requires
+a permanent service-controlled HTTPS origin; localhost HTTP is for local
+development only. It is independent of the dashboard host and request Host
+header. Set `DJANGO_ALLOWED_HOSTS` and deployment routing to serve the visitor
+host. Changing `APP_PORT` does not update `PUBLIC_BASE_URL` automatically.
+Origin validation at issuance belongs to TT-22; current helpers only build URLs.
+
+The planned resolver uses a temporary HTTP 302 redirect to the canonical
+stop page and must prevent caching from bypassing subsequent retirement
+checks. It accepts only platform-internal destinations and applies public
+visibility rules before redirecting. A retired placement keeps its token and
+shows an explanation; it does not disable other placements or the canonical
+stop URL. Exact unavailable-response status and content are resolved in
+TT-19/TT-21. Both routes remain unimplemented at this stage.
+
+Direct stop URLs remain shareable, but cannot distinguish placements or
+independently retire one placement's link. The extra resolver request and
+lookup are the cost of placement-specific lifecycle control. This decision
+does not authorize visitor analytics or separate QR/NFC tracking.
+
+Preserve issued tokens, stop UUIDs, and their origins through future changes.
+Never reuse a token or reassign an issued marker. Future domain changes must
+keep old origins and paths working; changing configuration alone cannot
+update printed signs or programmed tags. Any later-discovered direct stop
+links must continue to resolve under stop visibility rules; they cannot be
+retrofitted with placement-specific retirement.
+
 ### Proposed defaults requiring validation
 
-The remaining sections propose implementation and operating defaults rather than recording additional customer commitments. In particular: customer approval workflow, role boundaries, analytics, installation tracking, and content-retirement policies need validation before implementation.
+Except for the accepted TT-02 link contract above, the remaining sections propose implementation and operating defaults rather than recording additional customer commitments. In particular: customer approval workflow, role boundaries, analytics, installation tracking, and content-retirement policies need validation before implementation.
 
 ## 3. Product structure and rules
 
@@ -151,9 +188,9 @@ Maintain internal source notes for historical or factual claims. Customer approv
 
 ## 7. QR, NFC, and installation management
 
-Use a short domain controlled by the service, with opaque stable tokens such as `/r/<token>`. Domain renewal and continuity are operational requirements because printed URLs can remain in use for years.
+Use a short domain controlled by the service, with opaque stable tokens at `/r/<token>` (no trailing slash), as accepted in TT-02. Domain renewal and continuity are operational requirements because printed URLs can remain in use for years.
 
-The resolver looks up a marker and sends the visitor to an internal published stop URL. Prefer a temporary redirect when the destination may change; do not rely on permanently cached redirects. Allow only platform-controlled destinations in the first release, avoiding an arbitrary external redirect feature.
+The resolver looks up a marker and sends the visitor to an internal published stop URL. Use a temporary HTTP 302 redirect to `/s/<public-id>/`; do not rely on permanently cached redirects. Allow only platform-controlled destinations in the first release, avoiding an arbitrary external redirect feature.
 
 Proposed defaults:
 

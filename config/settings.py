@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes"}
 # Visitor origin used in printed QR codes and NFC tags; use a permanent domain
-# before issuance. The visitor application must serve /s/<stop-public-id>/.
+# before issuance. Planned routes: /r/<token> and /s/<stop-public-id>/.
+# Origin only: scheme and host, optional port; no path, query, or fragment.
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000")
 ALLOWED_HOSTS = [
     host.strip()

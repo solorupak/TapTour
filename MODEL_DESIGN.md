@@ -1,6 +1,6 @@
 # TapTour model design
 
-Status: implementation design based on the project specification. Initial Django model declarations exist under `apps/`; migrations and transactional write services have not been implemented. Product defaults below remain proposals, especially approval and role policy. `SCHEMA.dbml` remains the field-level reference for the model declarations.
+Status: implementation design based on the project specification. Django models and initial migration files exist under `apps/`; applied migration state has not been verified for TT-02. Composite ownership foreign-key migrations and transactional write services are not yet implemented. Product defaults below remain proposals, especially approval and role policy. Django migrations are the executable database history; `SCHEMA.dbml` describes the intended schema, including constraints still awaiting implementation.
 
 ## Application boundaries
 
@@ -43,6 +43,29 @@ apps/
 ```
 
 Do not create empty service/repository layers just to match a pattern. Ordinary ORM reads can stay straightforward; reuse selectors where authorization or visibility rules would otherwise be repeated.
+
+## Accepted public-link contract (TT-02)
+
+See the `Marker` docstring in [apps/markers/models.py](apps/markers/models.py)
+for a brief explanation of marker and stop URLs.
+
+The [specification's accepted link contract](PROJECT_SPECIFICIATION.md#accepted-link-contract--tt-02-23-september-2026)
+is authoritative. `Marker.get_absolute_url()` returns `/r/<token>` without
+a trailing slash; `Marker.public_url` prefixes `PUBLIC_BASE_URL` and is the
+QR/NFC payload. `Stop.get_absolute_url()` remains `/s/<public-id>/` and
+`Stop.public_url` remains the absolute canonical destination/share URL.
+No existing helper output or database identity is changed. The owner confirmed
+no previously issued links or tags on 23 September 2026.
+
+Both use one configured visitor origin, independent of the dashboard host.
+Production issuance requires permanent HTTPS; helpers tolerate a trailing
+slash but do not yet enforce the origin contract. TT-22 implements issuance
+validation. TT-19 implements the canonical page and TT-21 implements the
+retirement-aware, non-cacheable temporary HTTP 302 resolver. No public route
+is implemented by these helpers. Separate placement URLs support independent
+retirement, at the cost of a redirect and lookup; direct stop URLs cannot
+provide placement-specific retirement or identification. Existing/future
+issued URLs must retain their origin, token/UUID, and target identity.
 
 ## Shared conventions and DRY
 
@@ -170,7 +193,7 @@ DRY applies to repeated knowledge and rules. Similar-looking fields do not justi
 
 **Marker**
 
-- `id`, `stop → content.Stop`, unique `token`, `code`, `placement`, `has_qr`, `has_nfc`, `issued_at?`, `installed_at?`, `retired_at?`, `retirement_reason`, shared timestamps.
+- `id`, `stop → content.Stop`, unique `token`, `label`, `placement_notes`, `has_qr`, `has_nfc`, `issued_at?`, `installed_at?`, `retired_at?`, `retirement_reason`, shared timestamps.
 - At least one of QR/NFC must be true. Installation requires prior issuance; timestamps must follow the lifecycle order.
 - Ownership derives from stop; do not duplicate organization here.
 - QR and NFC on one sign share a token. Several signs for one stop are separate markers.
