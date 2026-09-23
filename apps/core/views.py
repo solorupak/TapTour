@@ -38,7 +38,15 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         query = self.request.GET.get("q", "").strip()[:200]
         if query:
             collections = collections.filter(internal_name__icontains=query)
-        collections = collections.annotate(stop_count=Count("stops", filter=Q(stops__archived_at__isnull=True))).order_by("-updated_at", "pk")
+        collections = collections.annotate(
+            stop_count=Count(
+                "stops",
+                filter=Q(
+                    stops__archived_at__isnull=True,
+                    stops__organization=organization,
+                )
+            )
+        ).order_by("-updated_at", "pk")
         page = Paginator(collections, 8).get_page(self.request.GET.get("page"))
         context.update({
             "organizations": organizations, "organization": organization,
