@@ -20,3 +20,4 @@ htmlcov/
 # Frontend dependencies and OS files
 node_modules/
 .DS_Store
+.plans/
