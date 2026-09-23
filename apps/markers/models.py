@@ -13,7 +13,12 @@ def generate_marker_token():
 
 
 class Marker(TimestampedModel):
-    """Physical placement; issuance/retirement guards require write services."""
+    """Represent one physical QR/NFC placement linked to a stop.
+
+    Print /r/<token>; it resolves to the stop page /s/<public-id>/.
+    Separate markers let one placement retire without retiring the stop.
+    Resolution and lifecycle guards still require implementation.
+    """
 
     stop = models.ForeignKey("content.Stop", on_delete=models.PROTECT, related_name="markers")
     token = models.CharField(
@@ -33,6 +38,24 @@ class Marker(TimestampedModel):
 
     def __str__(self):
         return self.label
+
+    def get_absolute_url(self) -> str:
+        """Return the permanent placement path, without a trailing slash.
+
+        The resolver is implemented in TT-21. Never reuse issued tokens.
+        """
+        return f"/r/{self.token}"
+
+    @property
+    def public_url(self) -> str:
+        """Return the URL shared by this placement's printed QR and NFC.
+
+        Keep the configured visitor origin active for issued links.
+        """
+        return (
+            f"{settings.PUBLIC_BASE_URL.rstrip('/')}"
+            f"{self.get_absolute_url()}"
+        )
 
 
 class CheckResult(models.TextChoices):

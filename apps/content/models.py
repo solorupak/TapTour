@@ -54,7 +54,7 @@ class Collection(TimestampedModel):
 
 
 class Stop(TimestampedModel):
-    """A collection's stop; QR and NFC share its canonical public URL."""
+    """Persistent content identity reached through placement markers."""
 
     organization = models.ForeignKey(
         "organizations.Organization", on_delete=models.PROTECT, related_name="stops",
@@ -80,21 +80,24 @@ class Stop(TimestampedModel):
     def __str__(self):
         return self.internal_name
 
-    def get_absolute_url(self):
-        """Stable visitor path, independent of names and collection membership.
+    def get_absolute_url(self) -> str:
+        """Return the canonical path, independent of names and collection.
 
-        The visitor application must serve this path. Keep public_id unchanged
+        The visitor app must serve this path. Keep public_id unchanged
         after issuance; editable=False only prevents ordinary form edits.
         """
         return f"/s/{self.public_id}/"
 
     @property
-    def public_url(self):
-        """Absolute URL to encode in both the QR code and an NFC URI record.
+    def public_url(self) -> str:
+        """Return the canonical stop URL for sharing and marker destinations.
 
-        Keep PUBLIC_BASE_URL's domain active for the lifetime of issued tags.
+        Printed QR codes and NFC tags use Marker.public_url instead.
         """
-        return f"{settings.PUBLIC_BASE_URL.rstrip('/')}{self.get_absolute_url()}"
+        return (
+            f"{settings.PUBLIC_BASE_URL.rstrip('/')}"
+            f"{self.get_absolute_url()}"
+        )
 
 
 class StopTranslation(TimestampedModel):

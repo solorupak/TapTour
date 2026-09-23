@@ -10,9 +10,9 @@ Django, PostgreSQL, server-rendered HTML, Tailwind CSS, and HTMX.
 
 Read these files before changing architecture or domain behavior:
 
-- `PROJECT_SPECIFICATION.md`: product requirements and proposed defaults.
-- `database/schema.dbml`: proposed database structure.
-- `database/README.md`: publishing workflows, constraints, and Django mapping.
+- `PROJECT_SPECIFICIATION.md`: product requirements and proposed defaults.
+- `SCHEMA.dbml`: proposed database structure.
+- `MODEL_DESIGN.md`: publishing workflows, constraints, and Django mapping.
 
 Distinguish confirmed requirements from proposals. Do not silently turn an open
 decision into a product commitment. Explain material design choices and keep
