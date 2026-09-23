@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="fixed top-0 z-40 w-full border-b border-gray-200 bg-white">
+  <div class="flex h-18 items-center justify-between px-4 sm:px-6">
+    <div class="flex items-center gap-3">
+      <button type="button" data-drawer-target="dashboard-sidebar" data-drawer-toggle="dashboard-sidebar" aria-controls="dashboard-sidebar" class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 lg:hidden"><span class="sr-only">Toggle navigation</span><svg class="size-6" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <a href="{% url 'dashboard' %}">{% include "includes/brand.html" %}</a>
+      <span class="ml-8 hidden border-l border-gray-200 pl-6 text-sm text-gray-500 md:block">Content workspace</span>
+    </div>
+    <button id="user-menu-button" data-dropdown-toggle="user-menu" type="button" class="flex items-center gap-3 rounded-lg p-1.5 hover:bg-gray-50" aria-label="Open account menu">
+      <span class="flex size-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800">{{ user.display_name|default:user.email|slice:':1'|upper }}</span>
+      <span class="hidden max-w-48 truncate text-sm font-medium sm:block">{{ user.display_name|default:user.email }}</span><span class="text-gray-400" aria-hidden="true">⌄</span>
+    </button>
+    <div id="user-menu" class="z-50 hidden w-64 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div class="px-4 py-3"><p class="text-sm font-medium">{{ user.display_name|default:'Your account' }}</p><p class="truncate text-sm text-gray-500">{{ user.email }}</p></div>
+      <form method="post" action="{% url 'logout' %}" class="p-2">{% csrf_token %}<button class="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">Sign out</button></form>
+    </div>
+  </div>
+</header>
+<aside id="dashboard-sidebar" class="fixed top-0 left-0 z-40 h-screen w-64 -translate-x-full border-r border-gray-200 bg-white pt-6 transition-transform lg:top-18 lg:z-30 lg:h-[calc(100vh-4.5rem)] lg:translate-x-0" tabindex="-1" aria-label="Workspace navigation">
+  <div class="flex h-full flex-col px-4 pb-5">
+    <div class="mb-6 flex items-center justify-between lg:hidden"><span class="text-sm font-semibold">Workspace navigation</span><button data-drawer-hide="dashboard-sidebar" aria-controls="dashboard-sidebar" class="rounded-lg px-3 py-2 hover:bg-gray-100" aria-label="Close navigation">×</button></div>
+    <div class="px-2"><p class="mb-2 text-[11px] font-semibold tracking-widest text-gray-400 uppercase">Organization</p>
+      <form method="get" action="{% url 'dashboard' %}">
+        <label for="organization" class="sr-only">Select organization</label>
+        <select id="organization" name="organization" class="form-input" {% if not organization %}disabled{% endif %}>
+          {% for item in organizations %}<option value="{{ item.slug }}" {% if item.pk == organization.pk %}selected{% endif %}>{{ item.name }}</option>{% empty %}<option>No organizations</option>{% endfor %}
+        </select>
+        {% if organization %}<button class="mt-2 text-xs font-medium text-blue-700 hover:underline">Switch organization →</button>{% endif %}
+      </form>
+    </div>
+    <nav class="mt-8 space-y-1">
+      <p class="px-3 pb-2 text-[11px] font-semibold tracking-widest text-gray-400 uppercase">Workspace</p>
+      <a href="{% url 'dashboard' %}{% if organization %}?organization={{ organization.slug|urlencode }}{% endif %}" aria-current="page" class="flex items-center gap-3 rounded-lg bg-blue-50 px-3 py-3 text-sm font-semibold text-blue-700"><svg class="size-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>Overview</a>
+      <a href="#collections" class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100"><svg class="size-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Collections</a>
+    </nav>
+    <div class="mt-auto rounded-xl bg-gray-50 p-4"><p class="text-sm font-medium">Made for meaningful visits</p><p class="mt-2 text-xs leading-5 text-gray-500">Your stories, connected to the places that make them matter.</p></div>
+    <form method="post" action="{% url 'logout' %}" class="mt-4">{% csrf_token %}<button class="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-100">Sign out <span class="float-right" aria-hidden="true">↗</span></button></form>
+  </div>
+</aside>
+<div class="pt-18 lg:pl-64">
+  <main id="main-content" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:py-10">{% block content %}{% endblock %}</main>
+  <footer class="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 px-4 py-6 text-xs text-gray-400 sm:px-8"><span>© {% now "Y" %} TapTour</span><span>Built with Flowbite</span></footer>
+</div>
+{% endblock %}

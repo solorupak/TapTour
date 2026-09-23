@@ -1,0 +1,33 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Overview · TapTour{% endblock %}
+{% block content %}
+<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+  <div><p class="mb-2 text-sm text-gray-500">Workspace <span class="mx-2 text-gray-300">/</span> Overview</p><h1 class="text-3xl font-bold tracking-tight">Your stories start here.</h1><p class="mt-3 text-sm leading-6 text-gray-500">{% if organization %}Here’s what’s happening at <span class="font-medium text-gray-700">{{ organization.name }}</span>.{% else %}Welcome to your TapTour content workspace.{% endif %}</p></div>
+  <span class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">{% now "j F Y" %}</span>
+</div>
+{% if organization %}
+<div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <article class="card p-5"><p class="text-sm font-medium text-gray-500">Collections</p><p class="mt-4 text-3xl font-bold">{{ stats.collections }}</p><p class="mt-2 text-xs text-gray-500">Active collections</p></article>
+  <article class="card p-5"><p class="text-sm font-medium text-gray-500">Stops</p><p class="mt-4 text-3xl font-bold">{{ stats.stops }}</p><p class="mt-2 text-xs text-gray-500">Places with a story to tell</p></article>
+  <article class="card p-5"><p class="text-sm font-medium text-gray-500">Published translations</p><p class="mt-4 text-3xl font-bold text-emerald-700">{{ stats.published }}</p><p class="mt-2 text-xs text-gray-500">Language versions with a publication</p></article>
+  <article class="card p-5"><p class="text-sm font-medium text-gray-500">Unpublished translations</p><p class="mt-4 text-3xl font-bold text-amber-600">{{ stats.unpublished }}</p><p class="mt-2 text-xs text-gray-500">Language versions not yet published</p></article>
+</div>
+<section id="collections" class="card scroll-mt-24 overflow-hidden">
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 p-5 sm:p-6"><div><h2 class="text-lg font-semibold">Collections</h2><p class="mt-1 text-sm text-gray-500">Organize the stories that bring your places to life.</p></div><span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{{ stats.collections }} total</span></div>
+  <form method="get" class="flex flex-wrap items-end gap-3 border-b border-gray-200 bg-gray-50/50 p-5 sm:px-6">
+    <input type="hidden" name="organization" value="{{ organization.slug }}">
+    <div class="w-full sm:max-w-xs"><label for="collection-search" class="mb-2 block text-xs font-medium text-gray-600">Find a collection</label><input type="search" id="collection-search" name="q" value="{{ query }}" maxlength="200" placeholder="Search collections…" class="form-input"></div>
+    <button class="primary-button">Search</button>{% if query %}<a href="?organization={{ organization.slug|urlencode }}#collections" class="px-2 py-3 text-sm text-gray-500 hover:text-gray-900">Clear search</a>{% endif %}
+  </form>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm"><caption class="sr-only">Active collections in {{ organization.name }}</caption><thead class="bg-gray-50 text-xs text-gray-500 uppercase"><tr><th scope="col" class="px-6 py-4">Collection</th><th scope="col" class="px-6 py-4">Stops</th><th scope="col" class="px-6 py-4">Visibility</th><th scope="col" class="px-6 py-4">Last updated</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">{% for collection in page_obj %}<tr class="hover:bg-gray-50"><th scope="row" class="min-w-48 px-6 py-5 font-medium text-gray-900">{{ collection.internal_name }}</th><td class="px-6 py-5 text-gray-500">{{ collection.stop_count }}</td><td class="px-6 py-5">{% if collection.is_public %}<span class="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Public</span>{% else %}<span class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Private</span>{% endif %}</td><td class="whitespace-nowrap px-6 py-5 text-gray-500">{{ collection.updated_at|date:"j M Y" }}</td></tr>{% empty %}<tr><td colspan="4" class="px-6 py-16 text-center"><div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-blue-50 text-xl text-blue-700" aria-hidden="true">▧</div><h3 class="font-semibold">{% if query %}No collections match your search{% else %}A new chapter starts here{% endif %}</h3><p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">{% if query %}Try a different collection name or clear your search.{% else %}There are no active collections in this organization yet. Collections will appear here once your team adds them.{% endif %}</p></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.count %}<div class="flex items-center justify-between border-t border-gray-200 px-6 py-4 text-sm text-gray-500"><span>{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} collections</span><nav aria-label="Collection pagination" class="flex gap-4">{% if page_obj.has_previous %}<a class="font-medium text-blue-700 hover:underline" href="?organization={{ organization.slug|urlencode }}&amp;q={{ query|urlencode }}&amp;page={{ page_obj.previous_page_number }}#collections">Previous</a>{% endif %}{% if page_obj.has_next %}<a class="font-medium text-blue-700 hover:underline" href="?organization={{ organization.slug|urlencode }}&amp;q={{ query|urlencode }}&amp;page={{ page_obj.next_page_number }}#collections">Next</a>{% endif %}</nav></div>{% endif %}
+</section>
+<div class="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5"><h2 class="text-sm font-semibold text-blue-900">One story. More ways to discover.</h2><p class="mt-1 text-sm leading-6 text-blue-800">Each stop connects your content to a place through QR and NFC. Keep your language versions up to date so every visitor can follow along.</p></div>
+{% else %}
+<section class="card px-6 py-20 text-center"><span class="mx-auto mb-5 flex size-14 items-center justify-center rounded-xl bg-blue-50 text-2xl text-blue-700" aria-hidden="true">◎</span><h2 class="text-xl font-semibold">Your workspace is waiting</h2><p class="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-500">You don’t have an active organization yet. Ask your administrator to assign you to an organization to see its collections and stories.</p></section>
+{% endif %}
+{% endblock %}

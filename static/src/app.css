@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@plugin "flowbite/plugin";
+@source "../../templates";
+@source "../../apps/accounts/forms.py";
+@source "../../node_modules/flowbite";
+
+@layer base {
+  body { @apply bg-gray-50 text-gray-900 antialiased; }
+  button, select { @apply cursor-pointer; }
+  a, button, input, select { @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600; }
+}
+@layer components {
+  .form-input { @apply block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:border-blue-600 focus:ring-blue-600; }
+  .card { @apply rounded-xl border border-gray-200 bg-white shadow-sm; }
+  .primary-button { @apply inline-flex items-center justify-center rounded-lg bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-200; }
+}

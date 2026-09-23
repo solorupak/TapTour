@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Sign in · TapTour{% endblock %}
+{% block body %}
+<main id="main-content" class="min-h-screen lg:grid lg:grid-cols-2">
+  <section class="relative hidden overflow-hidden bg-slate-950 p-14 text-white lg:flex lg:flex-col lg:justify-between xl:p-20" aria-label="About TapTour">
+    <div>{% include "includes/brand.html" %}</div>
+    <div class="relative z-10 max-w-lg py-16">
+      <p class="mb-5 text-xs font-semibold tracking-[0.2em] text-blue-300 uppercase">Every place has a story</p>
+      <h1 class="text-5xl leading-tight font-semibold tracking-tight xl:text-6xl">Bring your<br>stories to life.</h1>
+      <p class="mt-6 max-w-md text-lg leading-8 text-slate-300">Create, translate, and publish visitor experiences. One workspace, from the first word to the final tap.</p>
+      <div class="mt-12 flex gap-3 text-sm text-slate-300"><span class="rounded-full border border-slate-700 px-4 py-2">Multilingual stories</span><span class="rounded-full border border-slate-700 px-4 py-2">QR &amp; NFC</span></div>
+    </div>
+    <p class="text-sm text-slate-400">A little tap. A deeper connection.</p>
+    <svg class="pointer-events-none absolute -right-24 -bottom-24 size-[450px] text-blue-500/10" viewBox="0 0 400 400" fill="none" aria-hidden="true"><circle cx="200" cy="200" r="190" stroke="currentColor" stroke-width="1"/><circle cx="200" cy="200" r="145" stroke="currentColor" stroke-width="1"/><circle cx="200" cy="200" r="100" stroke="currentColor" stroke-width="1"/><circle cx="200" cy="200" r="55" stroke="currentColor" stroke-width="1"/></svg>
+  </section>
+  <section class="flex min-h-screen flex-col items-center justify-center px-6 py-12 sm:px-12">
+    <div class="mb-10 lg:hidden">{% include "includes/brand.html" %}</div>
+    <div class="w-full max-w-md">
+      <p class="mb-3 text-xs font-semibold tracking-widest text-blue-700 uppercase">Your content workspace</p>
+      <h2 class="text-3xl font-bold tracking-tight">Welcome back</h2>
+      <p class="mt-3 text-sm leading-6 text-gray-500">Sign in to manage your organizations and visitor stories.</p>
+      <form method="post" action="{% url 'login' %}" class="mt-8 space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}{% if field.name != 'remember_me' %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-medium">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div role="alert" class="mt-2 text-sm text-red-700">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+        <div class="flex items-center gap-2.5">
+          <input type="checkbox" name="remember_me" id="id_remember_me" class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" {% if form.remember_me.value %}checked{% endif %}>
+          <label for="id_remember_me" class="text-sm text-gray-600">Remember me for 14 days</label>
+        </div>
+        <button type="submit" class="primary-button w-full">Sign in to your workspace <span class="ml-2" aria-hidden="true">→</span></button>
+      </form>
+      <p class="mt-8 border-t border-gray-200 pt-6 text-center text-sm leading-6 text-gray-500">Need access or help signing in?<br>Contact your organization administrator.</p>
+    </div>
+    <p class="mt-16 text-xs text-gray-400">© {% now "Y" %} TapTour</p>
+  </section>
+</main>
+{% endblock %}
